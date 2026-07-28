@@ -1,0 +1,170 @@
+@page "/reports"
+@inject LibraryService LibraryService
+
+<div class="page-header">
+    <div class="page-header-left">
+        <h1>Reports & Analytics</h1>
+        <p>Library operations summary and loan analytics.</p>
+    </div>
+</div>
+
+@if (isLoading)
+{
+    <div class="loading-state"><div class="spinner-lg"></div><p>Generating reports...</p></div>
+}
+else if (summary != null)
+{
+    <!-- Summary Cards -->
+    <div class="cards">
+        <div class="card">
+            <div class="card-icon blue">📋</div>
+            <div class="card-body">
+                <div class="count">@summary.TotalLoansThisMonth</div>
+                <div class="card-label">Loans This Month</div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-icon orange">🏷️</div>
+            <div class="card-body">
+                <div class="count">@summary.ActiveLoans</div>
+                <div class="card-label">Currently Active</div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-icon red">⚠️</div>
+            <div class="card-body">
+                <div class="count">@summary.OverdueLoans</div>
+                <div class="card-label">Overdue Loans</div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-icon green">✅</div>
+            <div class="card-body">
+                <div class="count">@summary.ReturnedThisMonth</div>
+                <div class="card-label">Returned This Month</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popular Books -->
+    <div class="table-section" style="margin-top:24px;">
+        <div class="table-toolbar">
+            <h2 style="margin:0;font-size:16px;font-weight:600;">📈 Most Borrowed Books</h2>
+        </div>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Total Loans</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!summary.PopularBooks.Any())
+                {
+                    <tr><td colspan="4"><div class="empty-state"><div class="empty-icon">📊</div><p>No loan data yet.</p></div></td></tr>
+                }
+                else
+                {
+                    int rank = 0;
+                    @foreach (var pb in summary.PopularBooks)
+                    {
+                        rank++;
+                        <tr>
+                            <td class="row-num">
+                                @if (rank == 1) { <span style="font-size:18px;">🥇</span> }
+                                else if (rank == 2) { <span style="font-size:18px;">🥈</span> }
+                                else if (rank == 3) { <span style="font-size:18px;">🥉</span> }
+                                else { <span>@rank</span> }
+                            </td>
+                            <td>
+                                <div class="book-cell">
+                                    <div class="book-thumb">@(pb.Title.Length > 0 ? pb.Title[0].ToString() : "?")</div>
+                                    @pb.Title
+                                </div>
+                            </td>
+                            <td class="text-muted">@pb.Author</td>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:8px;">
+                                    <div style="background:var(--accent);height:8px;border-radius:4px;width:@(pb.LoanCount * 20)px;max-width:120px;"></div>
+                                    <span class="badge badge-loan">@pb.LoanCount loans</span>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Recent Loans -->
+    <div class="table-section" style="margin-top:24px;">
+        <div class="table-toolbar">
+            <h2 style="margin:0;font-size:16px;font-weight:600;">🕒 Recent Loan Activity</h2>
+        </div>
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Book</th>
+                    <th>Member</th>
+                    <th>Issue Date</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!summary.RecentLoans.Any())
+                {
+                    <tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🔖</div><p>No recent loans.</p></div></td></tr>
+                }
+                else
+                {
+                    int rowIdx = 0;
+                    @foreach (var l in summary.RecentLoans)
+                    {
+                        rowIdx++;
+                        <tr>
+                            <td class="row-num">@rowIdx</td>
+                            <td>
+                                <div class="book-cell">
+                                    <div class="book-thumb">@(l.BookTitle.Length > 0 ? l.BookTitle[0].ToString() : "?")</div>
+                                    @l.BookTitle
+                                </div>
+                            </td>
+                            <td>@l.MemberName</td>
+                            <td class="text-muted">@l.IssueDate.ToString("MMM d, yyyy")</td>
+                            <td class="@(l.IsOverdue ? "text-danger" : "text-muted")">@l.DueDate.ToString("MMM d, yyyy")</td>
+                            <td>
+                                @if (l.Status == "Returned")
+                                {
+                                    <span class="badge badge-available">Returned</span>
+                                }
+                                else if (l.IsOverdue || l.Status == "Overdue")
+                                {
+                                    <span class="badge badge-overdue">Overdue</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-loan">Active</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private bool isLoading = true;
+    private ReportSummary? summary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        summary = await LibraryService.GetReportSummaryAsync();
+        isLoading = false;
+    }
+}

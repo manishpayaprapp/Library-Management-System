@@ -1,0 +1,225 @@
+@page "/login"
+@layout EmptyLayout
+@inject AuthService AuthService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="login-dashboard">
+    <aside class="login-sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-width="2.5" stroke="white" fill="none" stroke-linecap="round" stroke-linejoin="round"
+                          d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z" />
+                </svg>
+            </div>
+            <span class="brand-name">VITB Lib</span>
+        </div>
+
+        <div class="login-nav">
+            <div class="login-nav-item active">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                </span>
+                Sign In
+            </div>
+            <div class="login-nav-item">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                </span>
+                Overview
+            </div>
+            <div class="login-nav-item">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z"/></svg>
+                </span>
+                Collection
+            </div>
+            <div class="login-nav-item">
+                <span class="nav-icon">
+                    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </span>
+                Members
+            </div>
+        </div>
+
+        <div class="login-sidebar-footer">
+            <span>VITB Lib</span>
+            <small>Library Management System</small>
+        </div>
+    </aside>
+
+    <main class="login-main">
+        <div class="login-header">
+            <span class="header-title">VITB Library Management System</span>
+            <span class="login-status-pill">Secure access</span>
+        </div>
+
+        <div class="login-content">
+            <div class="page-header login-page-header">
+                <div class="page-header-left">
+                    <h1>Welcome back</h1>
+                    <p>Sign in to continue managing VITB Lib.</p>
+                </div>
+            </div>
+
+        <div class="login-form-card @(shake ? "shake-card" : "")">
+            <div class="login-form-header">
+                <h2 class="login-form-title">Account Sign In</h2>
+                <p class="login-form-sub">Use your librarian credentials.</p>
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMsg))
+            {
+                <div class="login-alert">
+                    <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    @errorMsg
+                </div>
+            }
+
+            <div class="lf-group">
+                <label class="lf-label">Username</label>
+                <div class="lf-input-wrap">
+                    <span class="lf-icon">
+                        <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                        </svg>
+                    </span>
+                    <input type="text"
+                           class="lf-input"
+                           placeholder="Enter your username"
+                           @bind="username"
+                           @onkeydown="OnKeyDown"
+                           id="login-username"
+                           autocomplete="username" />
+                </div>
+            </div>
+
+            <div class="lf-group">
+                <label class="lf-label">Password</label>
+                <div class="lf-input-wrap">
+                    <span class="lf-icon">
+                        <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                    </span>
+                    <input type="@(showPassword ? "text" : "password")"
+                           class="lf-input"
+                           placeholder="Enter your password"
+                           @bind="password"
+                           @onkeydown="OnKeyDown"
+                           id="login-password"
+                           autocomplete="current-password" />
+                    <button type="button" class="lf-pw-toggle" @onclick="() => showPassword = !showPassword" tabindex="-1">
+                        @if (showPassword)
+                        {
+                            <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        }
+                    </button>
+                </div>
+            </div>
+
+            <button class="lf-btn" @onclick="HandleLogin" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner"></span>
+                    <span>Signing in...</span>
+                }
+                else
+                {
+                    <span>Sign In</span>
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                }
+            </button>
+
+            <p class="lf-hint">Default credentials: <strong>admin</strong> / <strong>admin123</strong></p>
+        </div>
+        </div>
+    </main>
+</div>
+
+@code {
+    private string username = string.Empty;
+    private string password = string.Empty;
+    private string errorMsg = string.Empty;
+    private bool isLoading = false;
+    private bool shake = false;
+    private bool showPassword = false;
+
+    protected override void OnInitialized()
+    {
+        if (AuthService.IsAuthenticated)
+            Nav.NavigateTo("/");
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await HandleLogin();
+    }
+
+    private async Task HandleLogin()
+    {
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMsg = "Please enter both username and password.";
+            await TriggerShake();
+            return;
+        }
+
+        isLoading = true;
+        errorMsg = string.Empty;
+        StateHasChanged();
+
+        bool success = false;
+        try
+        {
+            success = await AuthService.LoginAsync(username, password);
+        }
+        catch (Exception ex)
+        {
+            errorMsg = $"Connection error: {ex.Message}";
+            isLoading = false;
+            await TriggerShake();
+            return;
+        }
+
+        isLoading = false;
+
+        if (success)
+        {
+            await JS.InvokeVoidAsync(
+                "sessionStorage.setItem",
+                "vitb-lib-user",
+                System.Text.Json.JsonSerializer.Serialize(AuthService.CurrentUser));
+            Nav.NavigateTo("/");
+        }
+        else
+        {
+            errorMsg = "Invalid username or password. Please try again.";
+            password = string.Empty;
+            await TriggerShake();
+        }
+    }
+
+    private async Task TriggerShake()
+    {
+        shake = true;
+        StateHasChanged();
+        await Task.Delay(600);
+        shake = false;
+        StateHasChanged();
+    }
+}

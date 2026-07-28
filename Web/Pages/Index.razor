@@ -1,0 +1,374 @@
+@page "/"
+@inject LibraryService LibraryService
+@inject NavigationManager Nav
+
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-left">
+        <h1>Collection Overview</h1>
+        <p>Real-time tracking of the global book depository.</p>
+    </div>
+    <button class="btn-secondary" @onclick="Refresh">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="8 17 2 17 2 11"/>
+            <polyline points="16 7 22 7 22 13"/>
+            <path d="M2 17L7.5 11.5A10 10 0 0 1 20 9"/>
+            <path d="M22 7L16.5 12.5A10 10 0 0 1 4 15"/>
+        </svg>
+        Export Report
+    </button>
+</div>
+
+@if (isLoading)
+{
+    <div class="loading-state">
+        <div class="spinner-lg"></div>
+        <p>Loading data...</p>
+    </div>
+}
+else
+{
+    <!-- Stat Cards (2x2 grid) -->
+    <div class="cards">
+        <div class="card">
+            <div class="card-icon blue">
+                <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z"/></svg>
+            </div>
+            <div class="card-body">
+                <div class="count">@totalBooks.ToString("N0")</div>
+                <div class="card-label">Items in Repository</div>
+                <a href="/collection" class="card-link">View all items →</a>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-icon green">
+                <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="card-body">
+                <div class="count">@availableBooks.ToString("N0")</div>
+                <div class="card-label">Ready for Request</div>
+                <a href="/collection" class="card-link">View requests →</a>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-icon orange">
+                <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div class="card-body">
+                <div class="count">@activeLoans.ToString("N0")</div>
+                <div class="card-label">Active Loans</div>
+                <a href="/loans" class="card-link orange-link">View loans →</a>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-icon purple">
+                <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="card-body">
+                <div class="count">@totalMembers.ToString("N0")</div>
+                <div class="card-label">Registered Members</div>
+                <a href="/members" class="card-link purple-link">View members →</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="table-section">
+        <!-- Toolbar -->
+        <div class="table-toolbar">
+            <div class="table-search-wrap">
+                <span class="search-icon">
+                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </span>
+                <input type="text"
+                       placeholder="Search by title, author, or accession ID..."
+                       value="@searchTerm"
+                       @oninput="OnSearch" />
+            </div>
+            <div class="table-toolbar-right">
+                <div class="filter-select-wrap">
+                    <span class="filter-icon">
+                        <svg viewBox="0 0 24 24"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                    </span>
+                    <select @bind="statusFilter" @bind:after="ApplyFilter">
+                        <option value="">All Status</option>
+                        <option value="Available">Available</option>
+                        <option value="Active Loan">Active Loan</option>
+                    </select>
+                    <span class="chevron-icon">▾</span>
+                </div>
+                <button class="btn-primary" @onclick='() => Nav.NavigateTo("/add")'>
+                    + Register Item
+                </button>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Accession ID</th>
+                    <th>Published</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!pagedBooks.Any())
+                {
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <div class="empty-icon">📭</div>
+                                <p>No items found.</p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    int rowIdx = (currentPage - 1) * pageSize;
+                    @foreach (var b in pagedBooks)
+                    {
+                        rowIdx++;
+                        var localBook = b;
+                        var colorClass = "color-" + (Math.Abs(b.Title.GetHashCode()) % 9);
+                        <tr>
+                            <td class="row-num">@rowIdx</td>
+                            <td>
+                                <div class="book-cell">
+                                    <div class="book-thumb @colorClass">@(b.Title.Length > 0 ? b.Title[0].ToString() : "?")</div>
+                                    @b.Title
+                                </div>
+                            </td>
+                            <td>@b.Author</td>
+                            <td class="text-muted">@b.AccessionId</td>
+                            <td class="text-muted">@b.Published.ToString("MMM d, yyyy")</td>
+                            <td>
+                                @if (b.Status == "Available")
+                                {
+                                    <span class="badge badge-available">Available</span>
+                                }
+                                else if (b.Status == "Reserved")
+                                {
+                                    <span class="badge badge-reserved">Reserved</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-loan">@b.Status</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="action-btns">
+                                    <button class="action-btn view" title="View" @onclick="() => StartEdit(localBook)">
+                                        <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    </button>
+                                    <button class="action-btn edit" title="Edit" @onclick="() => StartEdit(localBook)">
+                                        <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    </button>
+                                    <button class="action-btn delete" title="Delete" @onclick="() => ConfirmDelete(localBook)">
+                                        <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                    </button>
+                                    <button class="action-btn" title="Transfer">
+                                        <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+
+        <!-- Footer / Pagination -->
+        <div class="table-footer">
+            <span class="table-footer-info">
+                Showing @((currentPage - 1) * pageSize + 1) to @Math.Min(currentPage * pageSize, filteredBooks.Count) of @filteredBooks.Count items
+            </span>
+            <div class="pagination">
+                <button class="page-btn" @onclick="PrevPage" disabled="@(currentPage == 1)">‹</button>
+                @for (int p = 1; p <= totalPages; p++)
+                {
+                    var pg = p;
+                    <button class="page-btn @(pg == currentPage ? "active" : "")"
+                            @onclick="() => GoToPage(pg)">@pg</button>
+                }
+                <button class="page-btn" @onclick="NextPage" disabled="@(currentPage == totalPages)">›</button>
+            </div>
+            <div class="rows-per-page">
+                Rows per page:
+                <select @bind="pageSize" @bind:after="OnPageSizeChanged">
+                    <option value="5">5</option>
+                    <option value="10" selected>10</option>
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                </select>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Edit Modal -->
+@if (editBook != null)
+{
+    <div class="modal-overlay" @onclick="CloseEdit">
+        <div class="modal-card" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h2>Edit Book</h2>
+                <button class="modal-close" @onclick="CloseEdit">✕</button>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" @bind="editBook.Title" />
+                </div>
+                <div class="form-group">
+                    <label>Author</label>
+                    <input type="text" @bind="editBook.Author" />
+                </div>
+                <div class="form-group">
+                    <label>Accession ID</label>
+                    <input type="text" @bind="editBook.AccessionId" />
+                </div>
+                <div class="form-group">
+                    <label>Genre</label>
+                    <input type="text" @bind="editBook.Genre" />
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select @bind="editBook.Status">
+                        <option value="Available">Available</option>
+                        <option value="Active Loan">Active Loan</option>
+                        <option value="Reserved">Reserved</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-primary" @onclick="SaveEdit">Save Changes</button>
+                <button class="btn-secondary" @onclick="CloseEdit">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Delete Confirm -->
+@if (deleteBook != null)
+{
+    <div class="modal-overlay" @onclick="CloseDelete">
+        <div class="modal-card confirm-modal" @onclick:stopPropagation>
+            <div class="confirm-icon">🗑️</div>
+            <h2>Delete Book?</h2>
+            <p>Are you sure you want to delete <strong>@deleteBook.Title</strong>? This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn-danger" @onclick="ExecuteDelete">Yes, Delete</button>
+                <button class="btn-secondary" @onclick="CloseDelete">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showToast)
+{
+    <div class="toast">✓ @toastMessage</div>
+}
+
+@code {
+    private bool isLoading = true;
+    private int totalBooks, availableBooks, activeLoans, totalMembers;
+    private List<Book> allBooks = new();
+    private List<Book> filteredBooks = new();
+    private IEnumerable<Book> pagedBooks => filteredBooks.Skip((currentPage - 1) * pageSize).Take(pageSize);
+    private int totalPages => Math.Max(1, (int)Math.Ceiling((double)filteredBooks.Count / pageSize));
+    private string searchTerm = string.Empty;
+    private string statusFilter = string.Empty;
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private bool showToast = false;
+    private string toastMessage = string.Empty;
+    private Book? editBook;
+    private Book? deleteBook;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        isLoading = true;
+        totalBooks = await LibraryService.GetTotalBooksAsync();
+        availableBooks = await LibraryService.GetAvailableBooksAsync();
+        activeLoans = await LibraryService.GetActiveLoansCountAsync();
+        totalMembers = await LibraryService.GetTotalMembersAsync();
+        allBooks = await LibraryService.GetBooksAsync();
+        ApplyFilter();
+        isLoading = false;
+    }
+
+    private async Task Refresh() => await LoadData();
+
+    private void OnSearch(ChangeEventArgs e)
+    {
+        searchTerm = e.Value?.ToString() ?? string.Empty;
+        ApplyFilter();
+        currentPage = 1;
+    }
+
+    private void ApplyFilter()
+    {
+        filteredBooks = allBooks
+            .Where(b => (string.IsNullOrEmpty(searchTerm) ||
+                b.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                b.Author.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                b.AccessionId.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)) &&
+                (string.IsNullOrEmpty(statusFilter) || b.Status == statusFilter))
+            .ToList();
+        currentPage = 1;
+    }
+
+    private void GoToPage(int p) { currentPage = p; }
+    private void PrevPage() { if (currentPage > 1) currentPage--; }
+    private void NextPage() { if (currentPage < totalPages) currentPage++; }
+    private void OnPageSizeChanged() { currentPage = 1; }
+
+    private void StartEdit(Book b)
+    {
+        editBook = new Book { Id = b.Id, Title = b.Title, Author = b.Author, AccessionId = b.AccessionId, Published = b.Published, Genre = b.Genre, Status = b.Status };
+    }
+    private void CloseEdit() => editBook = null;
+
+    private async Task SaveEdit()
+    {
+        if (editBook != null)
+        {
+            await LibraryService.UpdateBookAsync(editBook);
+            editBook = null;
+            await LoadData();
+            await ShowToast("Book updated successfully!");
+        }
+    }
+
+    private void ConfirmDelete(Book b) => deleteBook = b;
+    private void CloseDelete() => deleteBook = null;
+
+    private async Task ExecuteDelete()
+    {
+        if (deleteBook != null)
+        {
+            await LibraryService.DeleteBookAsync(deleteBook.Id);
+            deleteBook = null;
+            await LoadData();
+            await ShowToast("Book deleted successfully!");
+        }
+    }
+
+    private async Task ShowToast(string msg)
+    {
+        toastMessage = msg;
+        showToast = true;
+        StateHasChanged();
+        await Task.Delay(2500);
+        showToast = false;
+        StateHasChanged();
+    }
+}

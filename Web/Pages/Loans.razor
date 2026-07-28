@@ -1,0 +1,223 @@
+@page "/loans"
+@inject LibraryService LibraryService
+
+<div class="page-header">
+    <div class="page-header-left">
+        <h1>Active Loans</h1>
+        <p>@loans.Count items currently checked out.</p>
+    </div>
+    <button class="btn-primary" @onclick="OpenIssueModal">+ Issue Loan</button>
+</div>
+
+@if (isLoading)
+{
+    <div class="loading-state"><div class="spinner-lg"></div><p>Loading loans...</p></div>
+}
+else
+{
+    <div class="table-section">
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Borrower</th>
+                    <th>Issued</th>
+                    <th>Due</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!loans.Any())
+                {
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <div class="empty-icon">📋</div>
+                                <p>No active loans.</p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var l in loans)
+                    {
+                        var ll = l;
+                        <tr>
+                            <td><strong>@l.BookTitle</strong></td>
+                            <td>@l.MemberName</td>
+                            <td class="text-muted">@l.IssueDate.ToString("yyyy-MM-dd")</td>
+                            <td class="@(l.IsOverdue ? "text-danger" : "text-muted")">@l.DueDate.ToString("yyyy-MM-dd")</td>
+                            <td>
+                                @if (l.Status == "Returned")
+                                {
+                                    <span class="badge badge-available">Returned</span>
+                                }
+                                else if (l.IsOverdue || l.Status == "Overdue")
+                                {
+                                    <span class="badge badge-overdue">Overdue</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-ontime">On time</span>
+                                }
+                            </td>
+                            <td>
+                                @if (l.Status != "Returned")
+                                {
+                                    <button class="return-btn" @onclick="() => ConfirmReturn(ll)">Mark returned</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+<!-- Issue Loan Modal -->
+@if (showIssueModal)
+{
+    <div class="modal-overlay" @onclick="CloseIssueModal">
+        <div class="modal-card" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h2>Issue New Loan</h2>
+                <button class="modal-close" @onclick="CloseIssueModal">✕</button>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Book <span class="req">*</span></label>
+                    <select @bind="selectedBookId">
+                        <option value="0">— Select a book —</option>
+                        @foreach (var b in availableBooks)
+                        {
+                            <option value="@b.Id">@b.Title</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Member <span class="req">*</span></label>
+                    <select @bind="selectedMemberId">
+                        <option value="0">— Select a member —</option>
+                        @foreach (var m in activeMembers)
+                        {
+                            <option value="@m.Id">@m.FullName</option>
+                        }
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Due Date <span class="req">*</span></label>
+                    <input type="date" @bind="dueDate" min="@DateTime.Today.AddDays(1).ToString("yyyy-MM-dd")" />
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(issueError))
+            {
+                <div class="login-error" style="margin-top:8px;">⚠ @issueError</div>
+            }
+            <div class="modal-actions">
+                <button class="btn-primary" @onclick="IssueLoan">Issue Loan</button>
+                <button class="btn-secondary" @onclick="CloseIssueModal">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Return Confirm -->
+@if (returnLoan != null)
+{
+    <div class="modal-overlay" @onclick="CloseReturn">
+        <div class="modal-card confirm-modal" @onclick:stopPropagation>
+            <div class="confirm-icon">↩</div>
+            <h2>Return Book?</h2>
+            <p>Mark <strong>@returnLoan.BookTitle</strong> as returned by <strong>@returnLoan.MemberName</strong>?</p>
+            <div class="modal-actions">
+                <button class="btn-primary" @onclick="ExecuteReturn">Confirm Return</button>
+                <button class="btn-secondary" @onclick="CloseReturn">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showToast)
+{
+    <div class="toast">✓ @toastMessage</div>
+}
+
+@code {
+    private bool isLoading = true;
+    private List<Loan> loans = new();
+    private List<Book> availableBooks = new();
+    private List<Member> activeMembers = new();
+    private string statusFilter = string.Empty;
+    private bool showIssueModal = false;
+    private int selectedBookId = 0;
+    private int selectedMemberId = 0;
+    private DateTime dueDate = DateTime.Today.AddDays(14);
+    private string issueError = string.Empty;
+    private Loan? returnLoan;
+    private bool showToast;
+    private string toastMessage = string.Empty;
+
+    protected override async Task OnInitializedAsync() => await LoadLoans();
+
+    private async Task LoadLoans()
+    {
+        isLoading = true;
+        loans = await LibraryService.GetLoansAsync(statusFilter);
+        isLoading = false;
+    }
+
+    private async Task OpenIssueModal()
+    {
+        availableBooks = await LibraryService.GetAvailableBooksForSelectAsync();
+        activeMembers = await LibraryService.GetMembersForSelectAsync();
+        selectedBookId = 0;
+        selectedMemberId = 0;
+        dueDate = DateTime.Today.AddDays(14);
+        issueError = string.Empty;
+        showIssueModal = true;
+    }
+
+    private void CloseIssueModal() => showIssueModal = false;
+
+    private async Task IssueLoan()
+    {
+        issueError = string.Empty;
+        if (selectedBookId == 0 || selectedMemberId == 0)
+        {
+            issueError = "Please select both a book and a member.";
+            return;
+        }
+        if (dueDate <= DateTime.Today)
+        {
+            issueError = "Due date must be in the future.";
+            return;
+        }
+        await LibraryService.IssueLoanAsync(selectedBookId, selectedMemberId, dueDate);
+        showIssueModal = false;
+        await LoadLoans();
+        await ShowToast("Loan issued successfully!");
+    }
+
+    private void ConfirmReturn(Loan l) => returnLoan = l;
+    private void CloseReturn() => returnLoan = null;
+
+    private async Task ExecuteReturn()
+    {
+        if (returnLoan != null)
+        {
+            await LibraryService.ReturnLoanAsync(returnLoan.Id, returnLoan.BookId);
+            returnLoan = null;
+            await LoadLoans();
+            await ShowToast("Book returned successfully!");
+        }
+    }
+
+    private async Task ShowToast(string msg)
+    {
+        toastMessage = msg; showToast = true; StateHasChanged();
+        await Task.Delay(2500); showToast = false; StateHasChanged();
+    }
+}

@@ -1,0 +1,122 @@
+@page "/add"
+@inject LibraryService LibraryService
+@inject NavigationManager Nav
+
+<div class="page-header">
+    <div class="page-header-left">
+        <h1>Add Item</h1>
+        <p>Register a new title into the repository.</p>
+    </div>
+</div>
+
+<div class="form-card">
+    <div class="form-grid">
+        <div class="form-group">
+            <label>Title</label>
+            <input type="text" @bind="newBook.Title" placeholder="e.g. Dune" />
+        </div>
+        <div class="form-group">
+            <label>Author</label>
+            <input type="text" @bind="newBook.Author" placeholder="e.g. Frank Herbert" />
+        </div>
+        <div class="form-group">
+            <label>ISBN / Accession ID</label>
+            <input type="text" @bind="newBook.AccessionId" placeholder="978-0-000-00000-0" />
+        </div>
+        <div class="form-group">
+            <label>Published Date</label>
+            <input type="date" @bind="newBook.Published" />
+        </div>
+        <div class="form-group">
+            <label>Category</label>
+            <select @bind="newBook.Genre">
+                <option value="Fiction">Fiction</option>
+                <option value="Non-Fiction">Non-Fiction</option>
+                <option value="Science">Science</option>
+                <option value="History">History</option>
+                <option value="Biography">Biography</option>
+                <option value="Technology">Technology</option>
+                <option value="Philosophy">Philosophy</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Status</label>
+            <select @bind="newBook.Status">
+                <option value="Available">Available</option>
+                <option value="Reserved">Reserved</option>
+            </select>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMsg))
+    {
+        <div class="login-error" style="margin-top:12px;">⚠ @errorMsg</div>
+    }
+
+    @if (success)
+    {
+        <div class="toast" style="position:relative;bottom:auto;right:auto;margin-top:18px;animation:none;">
+            ✓ Book registered successfully!
+        </div>
+    }
+
+    <div class="form-actions">
+        <button class="btn-primary" @onclick="HandleSubmit" disabled="@isSubmitting">
+            @if (isSubmitting)
+            {
+                <span class="spinner"></span>
+            }
+            else
+            {
+                <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/>
+                    <line x1="9" y1="15" x2="15" y2="15"/>
+                </svg>
+                <span>Register Item</span>
+            }
+        </button>
+        <button class="btn-secondary" @onclick='() => Nav.NavigateTo("/collection")'>Cancel</button>
+    </div>
+</div>
+
+@code {
+    private Book newBook = new() { Published = DateTime.Now, Genre = "Fiction", Status = "Available" };
+    private bool success = false;
+    private bool isSubmitting = false;
+    private string errorMsg = string.Empty;
+
+    private async Task HandleSubmit()
+    {
+        errorMsg = string.Empty;
+        if (string.IsNullOrWhiteSpace(newBook.Title) || string.IsNullOrWhiteSpace(newBook.Author) || string.IsNullOrWhiteSpace(newBook.AccessionId))
+        {
+            errorMsg = "Please fill in all required fields (Title, Author, Accession ID).";
+            return;
+        }
+
+        isSubmitting = true;
+        StateHasChanged();
+
+        try
+        {
+            await LibraryService.AddBookAsync(newBook);
+            newBook = new() { Published = DateTime.Now, Genre = "Fiction", Status = "Available" };
+            success = true;
+            StateHasChanged();
+            await Task.Delay(2000);
+            success = false;
+        }
+        catch (Exception ex)
+        {
+            errorMsg = $"Error saving book: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+}

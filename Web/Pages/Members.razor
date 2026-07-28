@@ -1,0 +1,163 @@
+@page "/members"
+@inject LibraryService LibraryService
+
+<div class="page-header">
+    <div class="page-header-left">
+        <h1>Members</h1>
+        <p>@filteredMembers.Count registered members.</p>
+    </div>
+    <button class="btn-primary" @onclick="() => showAddModal = true">+ Add Member</button>
+</div>
+
+@if (isLoading)
+{
+    <div class="loading-state"><div class="spinner-lg"></div><p>Loading members...</p></div>
+}
+else
+{
+    <!-- Search bar -->
+    <div class="members-search-bar">
+        <span class="search-icon">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input type="text"
+               placeholder="Search members..."
+               value="@searchTerm"
+               @oninput="OnSearch" />
+    </div>
+
+    @if (!filteredMembers.Any())
+    {
+        <div class="empty-state">
+            <div class="empty-icon">👥</div>
+            <p>No members found.</p>
+        </div>
+    }
+    else
+    {
+        <div class="members-grid">
+            @for (int i = 0; i < filteredMembers.Count; i++)
+            {
+                var m = filteredMembers[i];
+                var idx = i;
+                var lm = m;
+                var initials = string.Join("", m.FullName.Split(' ').Take(2).Select(w => w.Length > 0 ? w[0].ToString().ToUpper() : ""));
+                <div class="member-card">
+                    <div class="member-avatar av-@(idx % 12)">@initials</div>
+                    <div class="member-info">
+                        <div class="member-name">@m.FullName</div>
+                        <div class="member-email">@m.Email</div>
+                        @if (m.Status == "Active")
+                        {
+                            <span class="badge badge-available" style="margin-top:6px;font-size:11px;padding:2px 8px;">Active</span>
+                        }
+                        else if (m.Status == "Suspended")
+                        {
+                            <span class="badge badge-suspended" style="margin-top:6px;font-size:11px;padding:2px 8px;">Suspended</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-loan" style="margin-top:6px;font-size:11px;padding:2px 8px;">@m.Status</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+<!-- Add Member Modal -->
+@if (showAddModal)
+{
+    <div class="modal-overlay" @onclick="() => showAddModal = false">
+        <div class="modal-card" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h2>Add New Member</h2>
+                <button class="modal-close" @onclick="() => showAddModal = false">✕</button>
+            </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Full Name <span class="req">*</span></label>
+                    <input type="text" @bind="newMember.FullName" placeholder="e.g. John Doe" />
+                </div>
+                <div class="form-group">
+                    <label>Email <span class="req">*</span></label>
+                    <input type="email" @bind="newMember.Email" placeholder="e.g. john@mailbox.com" />
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" @bind="newMember.Phone" placeholder="e.g. +91-9876543210" />
+                </div>
+                <div class="form-group">
+                    <label>Membership Date</label>
+                    <input type="date" @bind="newMember.MembershipDate" />
+                </div>
+            </div>
+            @if (!string.IsNullOrEmpty(addError))
+            {
+                <div class="login-error" style="margin-top:8px;">⚠ @addError</div>
+            }
+            <div class="modal-actions">
+                <button class="btn-primary" @onclick="AddMember">+ Add Member</button>
+                <button class="btn-secondary" @onclick="() => showAddModal = false">Cancel</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showToast)
+{
+    <div class="toast">✓ @toastMessage</div>
+}
+
+@code {
+    private bool isLoading = true;
+    private List<Member> allMembers = new();
+    private List<Member> filteredMembers = new();
+    private string searchTerm = string.Empty;
+    private bool showToast;
+    private string toastMessage = string.Empty;
+    private bool showAddModal = false;
+    private Member newMember = new() { MembershipDate = DateTime.Today };
+    private string addError = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        allMembers = await LibraryService.GetMembersAsync();
+        ApplyFilter();
+        isLoading = false;
+    }
+
+    private void OnSearch(ChangeEventArgs e) { searchTerm = e.Value?.ToString() ?? ""; ApplyFilter(); }
+    private void ApplyFilter()
+    {
+        filteredMembers = allMembers
+            .Where(m => string.IsNullOrEmpty(searchTerm) ||
+                m.FullName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                m.Email.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                m.Phone.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private async Task AddMember()
+    {
+        addError = string.Empty;
+        if (string.IsNullOrWhiteSpace(newMember.FullName) || string.IsNullOrWhiteSpace(newMember.Email))
+        {
+            addError = "Full Name and Email are required.";
+            return;
+        }
+        await LibraryService.AddMemberAsync(newMember);
+        showAddModal = false;
+        newMember = new() { MembershipDate = DateTime.Today };
+        allMembers = await LibraryService.GetMembersAsync();
+        ApplyFilter();
+        await ShowToast("Member added successfully!");
+    }
+
+    private async Task ShowToast(string msg)
+    {
+        toastMessage = msg; showToast = true; StateHasChanged();
+        await Task.Delay(2500); showToast = false; StateHasChanged();
+    }
+}
