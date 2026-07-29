@@ -1,13 +1,11 @@
 {
   "version": 2,
-  "dgSpecHash": "b989jtHDtY0=",
+  "dgSpecHash": "ADA4AjSs1lM=",
   "success": true,
-  "projectFilePath": "C:\\Hmm\\SD\\Assignments\\VITB Lib\\LibraryManagementSystem\\LibraryManagementSystem.csproj",
+  "projectFilePath": "C:\\Hmm\\SD\\Assignments\\VITB Lib\\LibraryManagementSystem.Web.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\Manish S P\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.28\\microsoft.netcore.app.ref.8.0.28.nupkg.sha512",
-    "C:\\Users\\Manish S P\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.28\\microsoft.windowsdesktop.app.ref.8.0.28.nupkg.sha512",
-    "C:\\Users\\Manish S P\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.28\\microsoft.aspnetcore.app.ref.8.0.28.nupkg.sha512",
-    "C:\\Users\\Manish S P\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\8.0.28\\microsoft.netcore.app.host.win-x64.8.0.28.nupkg.sha512"
+    "C:\\Users\\Manish S P\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.9\\microsoft.aspnetcore.app.internal.assets.10.0.9.nupkg.sha512",
+    "C:\\Users\\Manish S P\\.nuget\\packages\\npgsql\\9.0.3\\npgsql.9.0.3.nupkg.sha512"
   ],
   "logs": []
 }

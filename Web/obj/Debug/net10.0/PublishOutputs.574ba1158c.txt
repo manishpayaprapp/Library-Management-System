@@ -1,7 +1,0 @@
-C:\Hmm\SD\Assignments\VITB Lib\LibraryManagementSystem\Web\publish\LibraryManagementSystem.Web.exe
-C:\Hmm\SD\Assignments\VITB Lib\LibraryManagementSystem\Web\publish\appsettings.json
-C:\Hmm\SD\Assignments\VITB Lib\LibraryManagementSystem\Web\publish\LibraryManagementSystem.Web.dll
-C:\Hmm\SD\Assignments\VITB Lib\LibraryManagementSystem\Web\publish\LibraryManagementSystem.Web.runtimeconfig.json
-C:\Hmm\SD\Assignments\VITB Lib\LibraryManagementSystem\Web\publish\LibraryManagementSystem.Web.pdb
-C:\Hmm\SD\Assignments\VITB Lib\LibraryManagementSystem\Web\publish\Npgsql.dll
-C:\Hmm\SD\Assignments\VITB Lib\LibraryManagementSystem\Web\publish\LibraryManagementSystem.Web.deps.json
